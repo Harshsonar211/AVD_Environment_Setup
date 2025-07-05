@@ -1,0 +1,425 @@
+IMP links to refer- https://learnthecontent.com/exam/azure/az-140-configuring-and-operating-microsoft-azure-virtual-desktop/s/automate-creation-of-azure-virtual-desktop-hosts-and-host-pools-by-using-powershell-azure-cli-azure-resource-manager-templates-arm-templates-and-bicep
+
+1.Management group- (tanent)
+2.Subsciption
+3.Resource group
+4.Vnet/subnet
+5.hostpool (workspace/Appgroup-RAG/DAG)
+6.Virtual machine
+
+
+# Create Resource Group (if not already created)
+New-AzResourceGroup -harshrg $resourceGroupName -Eastasia $location
+e.g-New-AzResourceGroup -Name harshrg -Location "eastasia"
+
+Create V net-
+New-AzVirtualNetwork -Name Harshvnet -ResourceGroupName harshrg -Location eastasia -AddressPrefix 10.0.0.0/16 -Subnet $subnetConfig
+
+# Define subnet prefix
+$subnetPrefix = "10.0.0.0/24"
+
+# Step 1: Get the existing virtual network object
+$virtualNetwork = Get-AzVirtualNetwork -Name "Harshvnet" -ResourceGroupName "harshrg"
+
+# Step 2: Add the subnet configuration to the virtual network object
+$virtualNetwork = Add-AzVirtualNetworkSubnetConfig -Name "default" -AddressPrefix $subnetPrefix -VirtualNetwork $virtualNetwork
+
+# Step 3: Update the virtual network with the new subnet
+$virtualNetwork | Set-AzVirtualNetwork
+
+Full PowerShell Script to Create Host Pool
+powershell
+Copy
+Edit
+# Login
+Connect-AzAccount
+
+# Define variables
+$resourceGroupName = "harshrg"
+$location = "EastAsia"
+$hostPoolName = "HarshHostPool"
+$hostPoolFriendlyName = "Harsh AVD Host Pool"
+$hostPoolType = "Pooled"  # or "Personal"
+$loadBalancerType = "BreadthFirst"  # Or "DepthFirst"
+$preferredAppGroupType = "Desktop"
+$customRdpProperty = ""
+
+# Make sure resource group exists
+if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyContinue)) {
+    New-AzResourceGroup -Name $resourceGroupName -Location $location
+}
+
+# Create Host Pool
+New-AzWvdHostPool
+    -ResourceGroupName "harshrg"
+    -Name "HarshHostpool"
+    -Location "Eastasia"
+    -FriendlyName "Harsh AVD Host pool"
+    -HostPoolType "pooled"
+    -LoadBalancerType "BreadthFirst"
+    -PreferredAppGroupType "Desktop"
+    -CustomRdpProperty $customRdpProperty
+
+Write-Host "Host Pool '$hostPoolName' created in '$location'."
+
+
+#Actual script for host pool creation-
+
+New-AzWvdHostPool -ResourceGroupName "harshrg" -Name "HarshHP" -Location "Eastasia" -FriendlyName "Harsh AVD desktop" -HostPoolType "pooled" -LoadBalancerType "BreadthFirst" -PreferredAppGroupType "Desktop"
+
+error-Register-AzResourceProvider -ProviderNamespace "Microsoft.DesktopVirtualization"
+solution-
+Using Azure PowerShell:
+
+Run this command:
+
+Register-AzResourceProvider -ProviderNamespace "Microsoft.DesktopVirtualization"
+
+Wait for the registration to complete (you can check status using the next command):
+
+Get-AzResourceProvider -ProviderNamespace "Microsoft.DesktopVirtualization"
+
+Make sure the RegistrationState is Registered.
+
+PowerShell Script to Create Workspace
+powershell
+Copy
+Edit
+# Log in to Azure
+Connect-AzAccount
+
+# Variables
+$resourceGroupName = "harshrg"
+$location = "EastAsia"
+$workspaceName = "HarshWorkspace"
+$appGroupName = "HarshAppGroup"
+$hostPoolName = "HarshHostPool"
+
+# Step 1: Create Workspace
+New-AzWvdWorkspace `
+    -Name $workspaceName `
+    -ResourceGroupName $resourceGroupName `
+    -Location $location `
+    -FriendlyName "Harsh AVD Workspace" `
+    -Description "Workspace for Harsh AVD environment"
+
+Write-Host "Workspace '$workspaceName' created successfully."
+
+Actual script-
+New-AzWvdWorkspace -Name "HarshWS" -ResourceGroupName "harshrg" -Location "EastAsia" -FriendlyName "Harsh AVD Workspace" -Description "Workspace for Harsh AVD environment"
+
+# Step 2: Create an Application Group linked to the Host Pool (Desktop App Group)
+New-AzWvdApplicationGroup `
+    -ResourceGroupName $resourceGroupName `
+    -HostPoolArmPath "/subscriptions/$(Get-AzContext).Subscription.Id/resourceGroups/$resourceGroupName/providers/Microsoft.DesktopVirtualization/hostPools/$hostPoolName" `
+    -Location $location `
+    -Name $appGroupName `
+    -ApplicationGroupType "Desktop" `
+    -FriendlyName "Harsh Desktop App Group"
+
+Write-Host "Application Group '$appGroupName' created and linked to Host Pool '$hostPoolName'."
+
+# Step 3: Associate Application Group with Workspace
+New-AzWvdWorkspaceAssociation `
+    -ResourceGroupName $resourceGroupName `
+    -WorkspaceName $workspaceName `
+    -ApplicationGroupPath "/subscriptions/$(Get-AzContext).Subscription.Id/resourceGroups/$resourceGroupName/providers/Microsoft.DesktopVirtualization/applicationGroups/$appGroupName"
+
+Write-Host "Application Group '$appGroupName' associated with Workspace '$workspaceName'."
+
+steps-
+Complete PowerShell Script
+powershell
+Copy
+Edit
+# Log in
+Connect-AzAccount
+
+# Define variables
+$resourceGroupName = "harshrg"
+$location = "EastAsia"
+$hostPoolName = "HarshHostpool"
+$workspaceName = "HarshWS"
+$appGroupName = "HarshAppGroup"
+
+# Step 1: Create Host Pool
+New-AzWvdHostPool `
+    -ResourceGroupName $resourceGroupName `
+    -Name $hostPoolName `
+    -Location $location `
+    -FriendlyName "Harsh AVD Host pool" `
+    -HostPoolType "Pooled" `
+    -LoadBalancerType "BreadthFirst" `
+    -PreferredAppGroupType "Desktop"
+
+Write-Host "✅ Host Pool '$hostPoolName' created."
+
+# Step 2: Create Application Group linked to Host Pool
+$appGroup = New-AzWvdApplicationGroup `
+    -ResourceGroupName $resourceGroupName `
+    -HostPoolArmPath "/subscriptions/$(Get-AzContext).Subscription.Id/resourceGroups/$resourceGroupName/providers/Microsoft.DesktopVirtualization/hostPools/$hostPoolName" `
+    -Location $location `
+    -Name $appGroupName `
+    -ApplicationGroupType "Desktop" `
+    -FriendlyName "Harsh Desktop App Group"
+
+Write-Host "✅ Application Group '$appGroupName' created and linked to Host Pool."
+
+# Step 3: Create Workspace
+New-AzWvdWorkspace `
+    -Name $workspaceName `
+    -ResourceGroupName $resourceGroupName `
+    -Location $location `
+    -FriendlyName "Harsh AVD Workspace" `
+    -Description "Workspace for Harsh AVD environment"
+
+Write-Host "✅ Workspace '$workspaceName' created."
+
+# Step 4: Associate Application Group with Workspace
+New-AzWvdWorkspaceAssociation `
+    -ResourceGroupName $resourceGroupName `
+    -WorkspaceName $workspaceName `
+    -ApplicationGroupPath $appGroup.Id
+
+Write-Host "🎯 App Group '$appGroupName' successfully associated with Workspace '$workspaceName'."
+
+Actual-
+# Step 2: Create Application Group linked to Host Pool
+
+# Correctly fetch the subscription ID and build the host pool ARM path
+$subscriptionId = (Get-AzContext).Subscription.Id
+$hostPoolArmPath = "/subscriptions/$subscriptionId/resourceGroups/harshrg/providers/Microsoft.DesktopVirtualization/hostPools/HarshHP"
+
+New-AzWvdApplicationGroup -ResourceGroupName "harshrg" -HostPoolArmPath "/subscriptions/$(Get-AzContext).Subscription.Id/resourceGroups/harshrg/providers/Microsoft.DesktopVirtualization/hostPools/HarshHP" -Location "EastAsia" -Name "HarshAG" -ApplicationGroupType "Desktop" -FriendlyName "Harsh Desktop App Group" -Description 'Creating app group' 
+
+-HostPoolArmPath "/subscriptions/$(Get-AzContext).Subscription.Id/resourceGroups/harshrg/providers/Microsoft.DesktopVirtualization/hostPools/HarshHP"
+
+#$subscriptionId = (Get-AzContext).Subscription.Id  # <- Correct way to get Subscription ID
+
+##Actual powershell script for app group creation
+Fixed PowerShell Script
+# Log in to Azure
+Connect-AzAccount
+
+# Define variables
+$resourceGroupName = "harshrg"
+$location = "EastAsia"
+$hostPoolName = "HarshHP"
+$appGroupName = "HarshAG"
+$friendlyName = "Harsh Desktop App Group"
+
+# Get the subscription ID properly
+$subscriptionId = (Get-AzContext).Subscription.Id
+
+# Construct the full Host Pool ARM path
+$hostPoolArmPath = "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.DesktopVirtualization/hostPools/$hostPoolName"
+
+# Create the Application Group (now with valid HostPoolArmPath)
+New-AzWvdApplicationGroup `
+    -ResourceGroupName $resourceGroupName `
+    -Location $location `
+    -Name $appGroupName `
+    -FriendlyName $friendlyName `
+    -ApplicationGroupType "Desktop" `
+    -HostPoolArmPath $hostPoolArmPath
+
+#Actual Create Workspace
+New-AzWvdWorkspace -Name "HarshWS" -ResourceGroupName "harshrg" -Location "EastAsia" -FriendlyName "Harsh AVD Workspace" -Description "Workspace for Harsh AVD environment"
+
+
+# Actual script : Associate Application Group with Workspace
+the error message:
+
+New-AzWvdWorkspaceAssociation: The term 'New-AzWvdWorkspaceAssociation' is not recognized as a name of a cmdlet...
+
+indicates that PowerShell cannot find the New-AzWvdWorkspaceAssociation cmdlet. This issue typically arises due to one of the following reasons:
+
+Missing or outdated module: The required module (Az.DesktopVirtualization) might not be installed or is outdated.
+
+Module not imported: Even if the module is installed, it might not be imported into the current session.
+
+To resolve this issue, please follow the steps below:
+
+✅ Step 1: Install or Update the Az.DesktopVirtualization Module
+First, ensure that the Az.DesktopVirtualization module is installed and updated to the latest version.
+
+Install-Module -Name Az.DesktopVirtualization -Force -AllowClobber
+If the module is already installed, you can update it using:
+
+Update-Module -Name Az.DesktopVirtualization
+✅ Step 2: Import the Module into the Current Session
+After installing or updating the module, import it into your current PowerShell session:
+
+Import-Module Az.DesktopVirtualization
+✅ Step 3: Verify the Cmdlet Availability
+Check if the New-AzWvdWorkspaceAssociation cmdlet is available:
+
+Get-Command -Module Az.DesktopVirtualization -Name *WorkspaceAssociation*
+If the cmdlet is listed, you can proceed to use it. If not, ensure that the module is correctly installed and imported.
+
+
+## Get workspace ARM path.
+
+$resourceGroupName = "harshrg"
+$workspaceName = "HarshWS"
+
+# Get the workspace object
+$workspace = Get-AzWvdWorkspace -ResourceGroupName $resourceGroupName -Name $workspaceName
+
+# Display the ARM path (resource ID)
+$workspace.Id
+
+## ARM PATH
+/subscriptions/0c3bb37f-98c6-42f6-96c7-7bb5d7e34f15/resourcegroups/harshrg/providers/Microsoft.DesktopVirtualization/workspaces/HarshWS
+
+Update-AzWvdApplicationGroup -ResourceGroupName "harshrg" -ApplicationGroupName "HarshAG" -ApplicationGroup "Desktop"
+
+# Set variables
+$resourceGroupName = "harshrg"
+$appGroupName = "HarshAG"
+$workspaceName = "HarshWS"
+
+# Get existing objects
+$appGroup = Get-AzWvdApplicationGroup -ResourceGroupName $resourceGroupName -Name $appGroupName
+$workspace = Get-AzWvdWorkspace -ResourceGroupName $resourceGroupName -Name $workspaceName
+
+# Update the application group to associate it with the workspace
+Update-AzWvdApplicationGroup `
+    -ResourceGroupName $resourceGroupName `
+    -Name $appGroupName `
+    -FriendlyName $appGroup.FriendlyName `
+    -Description $appGroup.Description `
+
+==============================================================
+PowerShell Script to Create a General-Purpose VM
+## module need to create/install 
+
+ Potential Causes and Solutions
+1. Verify Active Subscription Context
+Ensure that the correct subscription is set as the active context:
+
+
+ Get-AzContextAutosaveSetting
+If the output does not display your intended subscription, set it explicitly:
+
+
+Set-AzContext -SubscriptionId "0c3bb37f-98c6-42f6-96c7-7bb5d7e34f15"
+Replace "your-subscription-id" with the actual Subscription ID.
+
+2. Check Resource Group Existence
+Confirm that the specified resource group exists:
+
+
+Get-AzResourceGroup -Name "harshrg"
+If the resource group is missing, create it:
+
+
+New-AzResourceGroup -Name "harshrg" -Location "EastAsia"
+3. Ensure Resource Provider Registration
+Verify that the Microsoft.Compute resource provider is registered:
+
+
+Get-AzResourceProvider -ProviderNamespace Microsoft.Compute
+If it's not registered, register it:
+
+
+Register-AzResourceProvider -ProviderNamespace Microsoft.Compute
+4. Update Azure PowerShell Modules
+Outdated modules can cause issues. Update the Az module:
+
+
+Update-Module -Name Az
+If the issue persists, consider installing a specific version known to be stable:
+
+
+Install-Module -Name Az.Compute -RequiredVersion 4.23.0 -Force
+Then, restart your PowerShell session.
+
+5. Check Azure Subscription Permissions
+Ensure your account has sufficient permissions to create resources in the subscription. If you're unsure, contact your Azure administrator
+
+
+
+# Variables
+$resourceGroupName = "harshrg"
+$location = "EastAsia"
+$vmName = "HarshVMM"
+$virtualNetworkName = "Harshvnet"
+$subnetName = "default"
+$ipName = "$vmName-ip"
+$nicName = "$vmName-nic"
+$size = "Standard_D2ds_v4"  # General purpose size
+$adminUsername = "azadmin"
+$adminPassword = ConvertTo-SecureString "Password@1234!" -AsPlainText -Force
+
+#avdRegistrationToken
+$avdRegistrationToken = "<enter token>"
+
+
+# Get existing subnet
+$subnet = Get-AzVirtualNetworkSubnetConfig -Name "default" -VirtualNetwork (Get-AzVirtualNetwork -Name "Harshvnet" -ResourceGroupName "harshrg")
+
+# Create public IP
+$publicIp = New-AzPublicIpAddress -Name "$vmName-ip" -ResourceGroupName "harshrg" -Location "EastAsia" -AllocationMethod Static
+
+# Create network interface
+$nic = New-AzNetworkInterface -Name $nicName -ResourceGroupName "harshrg" -Location "EastAsia" -SubnetId $subnet.Id -PublicIpAddressId $publicIp.Id
+
+
+
+# Define VM config
+$vmConfig = New-AzVMConfig -VMName $vmName -VMSize $size |
+    Set-AzVMOperatingSystem -Windows -ComputerName $vmName -Credential (New-Object System.Management.Automation.PSCredential($adminUsername, $adminPassword)) -ProvisionVMAgent -EnableAutoUpdate |
+    Set-AzVMSourceImage -PublisherName "MicrosoftWindowsServer" -Offer "WindowsServer" -Skus "2022-Datacenter" -Version "latest" |
+    Add-AzVMNetworkInterface -Id "HarshVMM-nic"
+
+# VM CONFIGURATION
+$cred = New-Object System.Management.Automation.PSCredential($adminUsername, $adminPassword)
+
+$vmConfig = New-AzVMConfig -VMName $vmName -VMSize $size |
+    Set-AzVMOperatingSystem -Windows -ComputerName $vmName -Credential $cred -ProvisionVMAgent -EnableAutoUpdate |
+    Set-AzVMSourceImage -PublisherName "MicrosoftWindowsServer" -Offer "WindowsServer" -Skus "2022-Datacenter" -Version "latest" |
+    Add-AzVMNetworkInterface -Id $nic.Id
+
+# Create VM
+New-AzVM -ResourceGroupName "harshrg" -Location "EastAsia" 
+hit enter 
+1. enter VM name 
+2. adminuser name 
+3. admin password
+
+================================
+
+## subscription ID 	
+0c3bb37f-98c6-42f6-96c7-7bb5d7e34f15
+
+============================================================================
+
+# AVD AGENT INSTALLATION & REGISTRATION
+# ------------------------------------------
+1.# Prepare script to run on VM
+$installAVDScript = @"
+Invoke-WebRequest -Uri https://aka.ms/avdagent -OutFile AVD-Agent.msi
+Invoke-WebRequest -Uri https://aka.ms/avdbootloader -OutFile AVD-Bootloader.msi
+Start-Process msiexec.exe -ArgumentList '/i AVD-Agent.msi /quiet /qn /norestart' -Wait
+Start-Process msiexec.exe -ArgumentList '/i AVD-Bootloader.msi /quiet /qn /norestart REGISTRATIONTOKEN=$avdRegistrationToken' -Wait
+"@
+2.
+# Encode the script to Base64
+$encodedScript = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($installAVDScript))
+
+3.
+Set-AzVMExtension -ResourceGroupName "harshrg" `
+    -VMName "HarshVMM" `
+    -Location "EastAsia" `
+    -Name "InstallAVDAgent" `
+    -Publisher "Microsoft.Compute" `
+    -ExtensionType "CustomScriptExtension" `
+    -TypeHandlerVersion "1.10" `
+    -SettingString $settings
+
+
+
+
+
+Register-RDAgent -Token "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg1RjRCRUY2OTFFQUU5RTZDMjI1OTRGM0NDRUZFRENCQkU5MjFCNkEiLCJ0eXAiOiJKV1QifQ.eyJSZWdpc3RyYXRpb25JZCI6ImRhZjg4NTU3LWJmZTItNDRjNC05NWMxLTdjZjZmNWMyZGY4MiIsIkJyb2tlclVyaSI6Imh0dHBzOi8vcmRicm9rZXItZy1hcGFjLXIxLnd2ZC5taWNyb3NvZnQuY29tLyIsIkRpYWdub3N0aWNzVXJpIjoiaHR0cHM6Ly9yZGRpYWdub3N0aWNzLWctYXBhYy1yMS53dmQubWljcm9zb2Z0LmNvbS8iLCJFbmRwb2ludFBvb2xJZCI6IjU2MWQwODk1LWVjZWEtNDdmYi1hNWM4LWI0MzBhN2Y5N2YzYyIsIkdsb2JhbEJyb2tlclVyaSI6Imh0dHBzOi8vcmRicm9rZXIud3ZkLm1pY3Jvc29mdC5jb20vIiwiR2VvZ3JhcGh5IjoiQVBBQyIsIkdsb2JhbEJyb2tlclJlc291cmNlSWRVcmkiOiJodHRwczovLzU2MWQwODk1LWVjZWEtNDdmYi1hNWM4LWI0MzBhN2Y5N2YzYy5yZGJyb2tlci53dmQubWljcm9zb2Z0LmNvbS8iLCJCcm9rZXJSZXNvdXJjZUlkVXJpIjoiaHR0cHM6Ly81NjFkMDg5NS1lY2VhLTQ3ZmItYTVjOC1iNDMwYTdmOTdmM2MucmRicm9rZXItZy1hcGFjLXIxLnd2ZC5taWNyb3NvZnQuY29tLyIsIkRpYWdub3N0aWNzUmVzb3VyY2VJZFVyaSI6Imh0dHBzOi8vNTYxZDA4OTUtZWNlYS00N2ZiLWE1YzgtYjQzMGE3Zjk3ZjNjLnJkZGlhZ25vc3RpY3MtZy1hcGFjLXIxLnd2ZC5taWNyb3NvZnQuY29tLyIsIkFBRFRlbmFudElkIjoiZTEzMGM1NzMtYjI4Mi00ZjdkLTliZTEtOWNmZjQyOWFkNGFkIiwibmJmIjoxNzQ3ODQ5OTU3LCJleHAiOjE3NDc5Mzg2MDAsImlzcyI6IlJESW5mcmFUb2tlbk1hbmFnZXIiLCJhdWQiOiJSRG1pIn0.bu6lkDHcnYyba58v0uddpusZ1bggvL7QSKTfvWZBbWzKDgHAKiHcryyzs4fcQV41K-xpnefCYfgUeN_K8N59D0aMJEmmulAXyYIGYO43AZ69WY2iTZasqXFt3V379oVAk773zDf2F5Qspj7eaOo8PUViDs-JYDhoqezdzWCiOsGEXbmusxo-t4HRvuaJxttVZpUUNtP9Y_HXqyvjhuw6LOpJObaAlmRA138_P8kElYQJ9qOUrwyhC7Y89-JK1sf5fWqVytaAT291-wF_i6ieNYSOmflpxgmBuF5sDvKODEbQ7g9gD3T0GID5SAnBZiAS2u1sEwZKt8VooYnIvohTLg"

@@ -1,0 +1,79 @@
+ PowerShell Script to Connect to Azure and Install Required Modules
+
+## To check power shell version
+
+$PSVersionTable.PSVersion
+
+ PowerShell Script to Connect to Azure and Install Required Modules
+
+# 1. Ensure you're running as Administrator
+# Check if running as Admin
+if (-NOT ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+        [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Warning "Please run PowerShell as Administrator."
+    exit
+}
+
+
+# 2. Install the Az module if not present
+if (-not (Get-Module -ListAvailable -Name Az)) {
+    Write-Output "Az module not found. Installing..."
+    Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force
+} else {
+    Write-Output "Az module already installed."
+}
+
+# 3. Import the Az module
+Import-Module Az -Force
+
+# 4. Login to Azure
+Write-Output "Logging in to Azure..."
+Connect-AzAccount
+
+# Optional: Set default subscription (uncomment and replace with your subscription ID or name)
+# Set-AzContext -SubscriptionId "0c3bb37f-98c6-42f6-96c7-7bb5d7e34f15"
+
+ Write-Output "Azure connection and setup completed successfully."
+
+
+
+testing
+$resourceGroupName = "harshrg"
+$location = "EastAsia"
+$vmName = "HarshVMM"
+$virtualNetworkName = "Harshvnet"
+$subnetName = "default"
+$ipName = "$vmName-ip"
+$nicName = "$vmName-nic"
+$size = "Standard_D2ds_v4"  # General purpose size
+$adminUsername = "azadmin"
+
+
+Set-AzVMExtension -ResourceGroupName "harshrg" -VMName "HarshVMM" -Location "EastAsia" -Name "InstallAVDAgent" -Publisher "Microsoft.Compute" -ExtensionType "CustomScriptExtension" ` "CustomScriptExtension" -TypeHandlerVersion "1.10" -SettingString "{`"commandToExecute`": `"powershell -EncodedCommand $encodedScript`"}"
+	
+
+
+Set-AzVMExtension -ResourceGroupName "harshrg" -VMName "HarshVMM" -Location "EastAsia" -Name "InstallAVDAgent" -Publisher "Microsoft.Compute" -ExtensionType "CustomScriptExtension" -TypeHandlerVersion "1.10.3" -SettingString $settings
+
+
+21 May
+========================================================================
+# Variables
+
+$registrationToken="eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg1RjRCRUY2OTFFQUU5RTZDMjI1OTRGM0NDRUZFRENCQkU5MjFCNkEiLCJ0eXAiOiJKV1QifQ.eyJSZWdpc3RyYXRpb25JZCI6ImRhZjg4NTU3LWJmZTItNDRjNC05NWMxLTdjZjZmNWMyZGY4MiIsIkJyb2tlclVyaSI6Imh0dHBzOi8vcmRicm9rZXItZy1hcGFjLXIxLnd2ZC5taWNyb3NvZnQuY29tLyIsIkRpYWdub3N0aWNzVXJpIjoiaHR0cHM6Ly9yZGRpYWdub3N0aWNzLWctYXBhYy1yMS53dmQubWljcm9zb2Z0LmNvbS8iLCJFbmRwb2ludFBvb2xJZCI6IjU2MWQwODk1LWVjZWEtNDdmYi1hNWM4LWI0MzBhN2Y5N2YzYyIsIkdsb2JhbEJyb2tlclVyaSI6Imh0dHBzOi8vcmRicm9rZXIud3ZkLm1pY3Jvc29mdC5jb20vIiwiR2VvZ3JhcGh5IjoiQVBBQyIsIkdsb2JhbEJyb2tlclJlc291cmNlSWRVcmkiOiJodHRwczovLzU2MWQwODk1LWVjZWEtNDdmYi1hNWM4LWI0MzBhN2Y5N2YzYy5yZGJyb2tlci53dmQubWljcm9zb2Z0LmNvbS8iLCJCcm9rZXJSZXNvdXJjZUlkVXJpIjoiaHR0cHM6Ly81NjFkMDg5NS1lY2VhLTQ3ZmItYTVjOC1iNDMwYTdmOTdmM2MucmRicm9rZXItZy1hcGFjLXIxLnd2ZC5taWNyb3NvZnQuY29tLyIsIkRpYWdub3N0aWNzUmVzb3VyY2VJZFVyaSI6Imh0dHBzOi8vNTYxZDA4OTUtZWNlYS00N2ZiLWE1YzgtYjQzMGE3Zjk3ZjNjLnJkZGlhZ25vc3RpY3MtZy1hcGFjLXIxLnd2ZC5taWNyb3NvZnQuY29tLyIsIkFBRFRlbmFudElkIjoiZTEzMGM1NzMtYjI4Mi00ZjdkLTliZTEtOWNmZjQyOWFkNGFkIiwibmJmIjoxNzQ3ODQ5OTU3LCJleHAiOjE3NDc5Mzg2MDAsImlzcyI6IlJESW5mcmFUb2tlbk1hbmFnZXIiLCJhdWQiOiJSRG1pIn0.bu6lkDHcnYyba58v0uddpusZ1bggvL7QSKTfvWZBbWzKDgHAKiHcryyzs4fcQV41K-xpnefCYfgUeN_K8N59D0aMJEmmulAXyYIGYO43AZ69WY2iTZasqXFt3V379oVAk773zDf2F5Qspj7eaOo8PUViDs-JYDhoqezdzWCiOsGEXbmusxo-t4HRvuaJxttVZpUUNtP9Y_HXqyvjhuw6LOpJObaAlmRA138_P8kElYQJ9qOUrwyhC7Y89-JK1sf5fWqVytaAT291-wF_i6ieNYSOmflpxgmBuF5sDvKODEbQ7g9gD3T0GID5SAnBZiAS2u1sEwZKt8VooYnIvohTLg"
+$vmName = "HarshVMM" 
+$resourceGroup = "harshrg" 
+$avdAgentURL = "https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrmXv"  # AVD Agent installer
+$bootLoaderURL = "https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrxrH"  # Boot loader installer
+
+# Download and install AVD Agent
+
+Invoke-WebRequest -Uri $avdAgentURL -OutFile "AVDAgent.msi"
+Start-Process msiexec.exe -ArgumentList "/i AVDAgent.msi /quiet /qn /norestart REGISTRATIONTOKEN= $registrationToken" -Wait
+
+# Download and install AVD Boot Loader
+Invoke-WebRequest -Uri $bootLoaderURL -OutFile "AVDBootLoader.msi"
+Start-Process msiexec.exe -ArgumentList "/i AVDBootLoader.msi /quiet /qn /norestart" -Wait
+
+Write-Host "VM registered to AVD host pool successfully."
