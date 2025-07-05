@@ -1,0 +1,70 @@
+# Variables
+$resourceGroupName = "YourResourceGroupName"
+$location = "YourRegion"  # e.g., "East US", "West Europe"
+$hostPoolName = "YourHostPoolName"
+$workspaceName = "YourWorkspaceName"
+$vmName = "YourVMName"
+$vmSize = "Standard_D2s_v3"  # Adjust as needed
+$adminUsername = "AdminUsername"
+$adminPassword = ConvertTo-SecureString "YourSecurePassword" -AsPlainText -Force
+$virtualNetworkName = "YourVNetName"
+$subnetName = "YourSubnetName"
+
+# Create Resource Group (if not already created)
+New-AzResourceGroup -harshrg $resourceGroupName -Eastasia $location
+e.g-New-AzResourceGroup -Name harshrg -Location "eastasia"
+
+Create V net-
+$virtualNetwork = New-AzVirtualNetwork -ResourceGroupName harshrg -Location eastasia -Name Harshvnet -AddressPrefix 10.0.0.0/16
+$subnetConfig = Add-AzVirtualNetworkSubnetConfig -Name default -AddressPrefix 10.0.0.0/24 -Harshvnet $virtualNetwork
+
+Main- New-AzVirtualNetwork -Name Harshvnet -ResourceGroupName harshrg -Location eastasia -AddressPrefix 10.0.0.0/16 -Subnet $subnetConfig
+
+# Define subnet prefix
+$subnetPrefix = "10.0.0.0/24"
+
+# Step 1: Get the existing virtual network object
+$virtualNetwork = Get-AzVirtualNetwork -Name "Harshvnet" -ResourceGroupName "harshrg"
+
+# Step 2: Add the subnet configuration to the virtual network object
+$virtualNetwork = Add-AzVirtualNetworkSubnetConfig -Name "default" -AddressPrefix $subnetPrefix -VirtualNetwork $virtualNetwork
+
+# Step 3: Update the virtual network with the new subnet
+$virtualNetwork | Set-AzVirtualNetwork
+# Create Host Pool
+New-AzWvdHostPool -ResourceGroupName $resourceGroupName `
+    -Location $location `
+    -Name $hostPoolName `
+    -HostPoolType "Pooled" `
+    -LoadBalancerType "BreadthFirst" `
+    -MaxSessionLimit 10
+
+# Create Workspace
+New-AzWvdWorkspace -ResourceGroupName $resourceGroupName `
+    -Location $location `
+    -Name $workspaceName `
+    -Description "AVD Workspace"
+
+# Associate Host Pool with Workspace
+New-AzWvdWorkspaceApplicationGroupAssociation -ResourceGroupName $resourceGroupName `
+    -WorkspaceName $workspaceName `
+    -ApplicationGroupName "$hostPoolName-DAG"
+
+# Create Virtual Machine
+New-AzVm -ResourceGroupName $resourceGroupName `
+    -Location $location `
+    -Name $vmName `
+    -Size $vmSize `
+    -VirtualNetworkName $virtualNetworkName `
+    -SubnetName $subnetName `
+    -Credential (New-Object PSCredential ($adminUsername, $adminPassword)) `
+    -ImageName "Win2022Datacenter"  # Adjust OS as needed
+
+# Add VM to Host Pool
+Add-AzWvdSessionHost -ResourceGroupName $resourceGroupName `
+    -HostPoolName $hostPoolName `
+    -Name $vmName `
+    -SessionHostName "$vmName.domain.com" `
+    -AllowNewSession $true
+
+Write-Host "AVD setup completed successfully!"
